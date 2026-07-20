@@ -25,3 +25,60 @@ An asynchronous, cross-domain state auditor and configuration drift detector. Th
    ```bash
    git clone [https://github.com/RPDevs-Builds/infra-audit-engine.git](https://github.com/RPDevs-Builds/infra-audit-engine.git)
    cd infra-audit-engine
+   ```
+
+2. **Initialize the environment and compile the binary:**
+   ```bash
+   make build
+   ```
+   *This command creates the virtual environment, installs requirements, and compiles the `orchestrator` binary into the `dist/` directory, bundling necessary configuration paths.*
+
+## Configuration
+
+Secrets and target arrays are managed via an `.env` (or `.env.age`) file at the project root. 
+
+**Interactive Enrollment:**
+Use the built-in enrollment script to correctly map and format new infrastructure targets:
+```bash
+make enroll
+```
+
+*Note: If utilizing FIDO2 encryption, ensure you encrypt the updated `.env` file to `.env.age` using your local encryption script before executing the binary.*
+
+## Usage
+
+Execute the compiled standalone binary directly:
+```bash
+make run
+```
+*Alternatively: `./dist/orchestrator`*
+
+### Expected Output
+1. Hardware decryption sequence initiates (requires physical FIDO2 touch).
+2. Asynchronous connections map target topologies.
+3. System outputs `WARNING` lines detailing line-item configuration drift.
+4. Active state merges to `docs/CURRENT_ENV.yml`.
+5. Previous state archives to `docs/history/`.
+
+## Directory Structure
+
+```text
+.
+├── Makefile
+├── requirements.txt
+├── .env.age                 # Hardware-encrypted configuration (Not committed)
+├── src/
+│   ├── orchestrator.py      # Main execution and drift logic
+│   ├── config.py            # Environment boundary and decryption handling
+│   ├── registry.py          # YAML state management and normalization
+│   ├── enroll.py            # Target array generator
+│   ├── models/
+│   │   └── infrastructure.py # Pydantic schemas (Linux, OpenWrt, etc.)
+│   └── modules/
+│       ├── ssh_audit.py     # Local infrastructure collection
+│       ├── cloudflare_api.py # SaaS API logic
+│       └── github_api.py    # SaaS API logic
+└── docs/
+    ├── CURRENT_ENV.yml      # Live infrastructure state
+    └── history/             # Retained rolling state backups
+```
