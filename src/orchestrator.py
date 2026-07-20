@@ -1,0 +1,114 @@
+# Path: /mnt/sharedroot/projects/llm-userprofile/AUDIT/src/orchestrator.py
+
+import asyncio
+import logging
+from config import load_environment, get_hosts_from_env, PROJECT_ROOT
+from modules.github_api import GitHubAuditor
+from modules.cloudflare_api import CloudflareAuditor
+from modules.ssh_audit import InfrastructureAuditor
+from registry import RegistryManager
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def dict_diff(old, new, path=""):
+    """Recursively compares dicts, formatting large outputs to prevent terminal noise."""
+    ignore_keys = {'collected_at', 'load_average', 'memory_active', 'ssh_keys_verified'}
+    diffs = []
+    if not old: return diffs
+    
+    reg_old = old.get("environment_registry", {})
+    reg_new = new.get("environment_registry", {})
+    
+    def format_val(v):
+        """Summarizes large structures and truncates strings for clean logging."""
+        if isinstance(v, dict):
+            return f"[Dictionary: {len(v)} keys]"
+        elif isinstance(v, list):
+            return f"[List: {len(v)} items]"
+        
+        v_str = str(v)
+        return v_str if len(v_str) < 60 else v_str[:57] + "..."
+    
+    def recursive_compare(o_data, n_data, current_path):
+        keys = set(list(o_data.keys()) + list(n_data.keys()))
+        for k in keys:
+            if k in ignore_keys: continue
+            
+            p = f"{current_path}.{k}" if current_path else k
+            o_val = o_data.get(k)
+            n_val = n_data.get(k)
+            
+            if k not in o_data:
+                diffs.append(f"ADDED: {p} | VALUE: {format_val(n_val)}")
+            elif k not in n_data:
+                diffs.append(f"REMOVED: {p} | OLD VALUE: {format_val(o_val)}")
+            elif o_val != n_val:
+                if isinstance(o_val, dict) and isinstance(n_val, dict):
+                    recursive_compare(o_val, n_val, p)
+                else:
+                    diffs.append(f"CHANGED: {p} | OLD: {format_val(o_val)} | NEW: {format_val(n_val)}")
+
+    recursive_compare(reg_old, reg_new, "")
+    return diffs
+
+async def run_audit_task(host):
+    """Execution wrapper for individual infrastructure nodes."""
+    try:
+        if host['name'] == "github":
+            auditor = GitHubAuditor(host['address'], host['password'])
+            result = await auditor.audit()
+            return (host['name'], host['address'], result)
+        elif host['name'] == "cloudflare":
+            auditor = CloudflareAuditor(host['user'], host['password'], host['audit_scope'], "")
+            result = await auditor.audit()
+            return (host['name'], host['name'], result)
+        else:
+            auditor = InfrastructureAuditor(host['address'], host['user'], host['password'])
+            result = await auditor.get_system_stats(host['name'])
+            return (host['name'], host['name'], result)
+    except Exception as e:
+        logger.error(f"Critical failure in module {host.get('name', 'unknown')}: {e}")
+        return (host.get('name', 'unknown'), host.get('address'), e)
+
+async def main():
+    load_environment()
+    hosts = get_hosts_from_env()
+    registry = RegistryManager(str(PROJECT_ROOT / "docs" / "CURRENT_ENV.yml"))
+    reg_data = registry.load()
+    prev_reg = registry.get_previous_registry()
+
+    # Launch audit tasks concurrently
+    tasks = [run_audit_task(host) for host in hosts]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    for result in results:
+        if isinstance(result, Exception): continue
+        name, identifier, audit_result = result
+        if isinstance(audit_result, Exception): continue
+        
+        # Serialize model output
+        data_to_save = audit_result.model_dump() if hasattr(audit_result, 'model_dump') else audit_result
+        
+        if name == "github":
+            registry.update_github_ecosystem(reg_data, identifier, data_to_save)
+        elif name == "cloudflare":
+            reg_data["environment_registry"]["cloud_infrastructure"] = data_to_save
+        else:
+            registry.update_node_audit(reg_data, name, data_to_save)
+        
+        logger.info(f"Successfully merged data for node: {name}")
+
+    # Report Drift
+    drift = dict_diff(prev_reg, reg_data)
+    if drift:
+        for d in drift: logger.warning(d)
+    else:
+        logger.info("No configuration drift detected.")
+    
+    registry.save(reg_data)
+    print("=== REGISTRY MERGE COMPLETE ===")
+
+if __name__ == "__main__":
+    asyncio.run(main())
