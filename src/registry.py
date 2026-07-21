@@ -53,9 +53,10 @@ class RegistryManager:
         with open(files[0], 'r') as f: return self.yaml.load(f)
 
     def update_node_audit(self, reg_data: Dict, name: str, audit_data: Dict):
+        node_key = name.lower()
         if "nodes" not in reg_data["environment_registry"]: reg_data["environment_registry"]["nodes"] = {}
-        if name not in reg_data["environment_registry"]["nodes"]: reg_data["environment_registry"]["nodes"][name] = {"name": name}
-        reg_data["environment_registry"]["nodes"][name]["latest_audit"] = audit_data
+        if node_key not in reg_data["environment_registry"]["nodes"]: reg_data["environment_registry"]["nodes"][node_key] = {"name": name}
+        reg_data["environment_registry"]["nodes"][node_key]["latest_audit"] = audit_data
 
     def update_github_ecosystem(self, reg_data: Dict, identifier: str, audit_data: Dict):
         if "github_ecosystem" not in reg_data["environment_registry"]: reg_data["environment_registry"]["github_ecosystem"] = {}

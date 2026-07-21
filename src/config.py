@@ -1,11 +1,14 @@
-# Path: /mnt/sharedroot/projects/llm-userprofile/AUDIT/src/config.py
+# Path: src/config.py
 
 import os
 import subprocess
 import sys
 import io
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 def get_base_path():
     """Resolves correct path whether running as a Python script or PyInstaller binary."""
@@ -31,23 +34,46 @@ def load_environment() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     if ENV_AGE.exists():
-        print("=== DECRYPTING ENVIRONMENT SECRETS ===")
+        logger.info("=== DECRYPTING ENVIRONMENT SECRETS ===")
+        
+        # Aggressive PATH expansion to hunt down the FIDO2 plugin across different package managers
+        custom_env = os.environ.copy()
+        expanded_paths = [
+            f"{Path.home()}/go/bin",
+            f"{Path.home()}/.local/bin",
+            f"{Path.home()}/.cargo/bin",
+            "/usr/local/bin",
+            "/usr/bin",
+            "/opt/homebrew/bin",
+            "/home/linuxbrew/.linuxbrew/bin"
+        ]
+        
+        current_path = custom_env.get("PATH", "")
+        for p in expanded_paths:
+            if p not in current_path:
+                current_path += f":{p}"
+                
+        custom_env["PATH"] = current_path
+
         try:
             result = subprocess.run(
                 ["age", "-d", "-i", FIDO2_IDENTITY, str(ENV_AGE)],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
+                env=custom_env
             )
             load_dotenv(stream=io.StringIO(result.stdout))
+            logger.info("Decryption successful. Secrets loaded into active memory.")
         except subprocess.CalledProcessError as e:
-            print(f"Error: Decryption failed or FIDO2 touch timed out.\n{e.stderr}")
+            logger.error(f"Decryption failed or FIDO2 touch timed out.\n{e.stderr}")
             raise RuntimeError("FIDO2 Hardware Decryption Failed")
 
     elif ENV_FILE.exists():
-        print("WARNING: Using cleartext .env file. Consider encrypting via encrypt_secrets.sh.")
+        logger.warning("Using cleartext .env file. Consider encrypting via encrypt_secrets.sh.")
         load_dotenv(dotenv_path=ENV_FILE)
     else:
+        logger.error(f"Neither {ENV_AGE} nor {ENV_FILE} found in {PROJECT_ROOT}.")
         raise FileNotFoundError(f"Neither {ENV_AGE} nor {ENV_FILE} found in {PROJECT_ROOT}.")
 
 def get_hosts_from_env() -> list[dict]:

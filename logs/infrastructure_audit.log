@@ -1,0 +1,37 @@
+2026-07-20 20:52:48 | INFO     | Orchestrator         | Initializing Infrastructure Audit Engine...
+2026-07-20 20:52:48 | INFO     | config               | === DECRYPTING ENVIRONMENT SECRETS ===
+2026-07-20 20:52:54 | INFO     | config               | Decryption successful. Secrets loaded into active memory.
+2026-07-20 20:54:55 | INFO     | Orchestrator         | Initializing Infrastructure Audit Engine...
+2026-07-20 20:54:55 | INFO     | config               | === DECRYPTING ENVIRONMENT SECRETS ===
+2026-07-20 20:55:12 | ERROR    | config               | Decryption failed or FIDO2 touch timed out.
+age: waiting on fido2prf plugin...
+
+2026-07-20 20:55:14 | INFO     | Orchestrator         | Initializing Infrastructure Audit Engine...
+2026-07-20 20:55:14 | INFO     | config               | === DECRYPTING ENVIRONMENT SECRETS ===
+2026-07-20 20:55:20 | INFO     | config               | Decryption successful. Secrets loaded into active memory.
+2026-07-20 20:58:08 | INFO     | Orchestrator         | Initializing Infrastructure Audit Engine...
+2026-07-20 20:58:08 | INFO     | config               | === DECRYPTING ENVIRONMENT SECRETS ===
+2026-07-20 20:58:13 | INFO     | config               | Decryption successful. Secrets loaded into active memory.
+2026-07-20 20:58:14 | INFO     | Orchestrator         | Dispatching audit tasks for 6 target(s)...
+2026-07-20 20:58:19 | INFO     | Orchestrator         | Successfully processed telemetry for node: T430
+2026-07-20 20:58:19 | INFO     | Orchestrator         | Successfully processed telemetry for node: llmadmin01
+2026-07-20 20:58:19 | INFO     | Orchestrator         | Successfully processed telemetry for node: edge
+2026-07-20 20:58:19 | INFO     | Orchestrator         | Successfully processed telemetry for node: github
+2026-07-20 20:58:19 | INFO     | Orchestrator         | Successfully processed telemetry for node: github
+2026-07-20 20:58:19 | INFO     | Orchestrator         | Successfully processed telemetry for node: cloudflare
+2026-07-20 20:58:19 | INFO     | Orchestrator         | No configuration drift detected.
+2026-07-20 20:58:19 | INFO     | Orchestrator         | Drift artifact saved to: /mnt/sharedroot/projects/infra-audit-engine/docs/audit_output/latest_drift_report.txt
+2026-07-20 20:58:20 | INFO     | Orchestrator         | === REGISTRY MERGE COMPLETE ===
+2026-07-20 21:09:25 | INFO     | Orchestrator         | Initializing Infrastructure Audit Engine...
+2026-07-20 21:09:25 | INFO     | config               | === DECRYPTING ENVIRONMENT SECRETS ===
+2026-07-20 21:09:32 | INFO     | config               | Decryption successful. Secrets loaded into active memory.
+2026-07-20 21:09:32 | INFO     | Orchestrator         | Dispatching audit tasks for 6 target(s)...
+2026-07-20 21:09:37 | INFO     | Orchestrator         | Successfully processed telemetry for node: T430
+2026-07-20 21:09:37 | INFO     | Orchestrator         | Successfully processed telemetry for node: llmadmin01
+2026-07-20 21:09:37 | INFO     | Orchestrator         | Successfully processed telemetry for node: edge
+2026-07-20 21:09:37 | INFO     | Orchestrator         | Successfully processed telemetry for node: github
+2026-07-20 21:09:37 | INFO     | Orchestrator         | Successfully processed telemetry for node: github
+2026-07-20 21:09:37 | INFO     | Orchestrator         | Successfully processed telemetry for node: cloudflare
+2026-07-20 21:09:37 | INFO     | Orchestrator         | No configuration drift detected.
+2026-07-20 21:09:37 | INFO     | Orchestrator         | Drift artifact saved to: /mnt/sharedroot/projects/infra-audit-engine/docs/audit_output/latest_drift_report.txt
+2026-07-20 21:09:38 | INFO     | Orchestrator         | === REGISTRY MERGE COMPLETE ===

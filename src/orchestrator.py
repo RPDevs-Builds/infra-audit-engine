@@ -1,17 +1,18 @@
-# Path: /mnt/sharedroot/projects/llm-userprofile/AUDIT/src/orchestrator.py
+# Path: src/orchestrator.py
 
 import asyncio
 import logging
 from datetime import datetime
 from config import load_environment, get_hosts_from_env, PROJECT_ROOT
+from logger import setup_system_logger
+
+# Initialize logging BEFORE modules run to enforce third-party silencing
+logger = setup_system_logger(PROJECT_ROOT)
+
 from modules.github_api import GitHubAuditor
 from modules.cloudflare_api import CloudflareAuditor
 from modules.ssh_audit import InfrastructureAuditor
 from registry import RegistryManager
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 def dict_diff(old, new, path=""):
     """Recursively compares dicts, formatting large outputs to prevent terminal noise."""
@@ -74,13 +75,16 @@ async def run_audit_task(host):
         return (host.get('name', 'unknown'), host.get('address'), e)
 
 async def main():
+    logger.info("Initializing Infrastructure Audit Engine...")
     load_environment()
     hosts = get_hosts_from_env()
+    
     registry = RegistryManager(str(PROJECT_ROOT / "docs" / "CURRENT_ENV.yml"))
     reg_data = registry.load()
     prev_reg = registry.get_previous_registry()
 
     # Launch audit tasks concurrently
+    logger.info(f"Dispatching audit tasks for {len(hosts)} target(s)...")
     tasks = [run_audit_task(host) for host in hosts]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -109,17 +113,29 @@ async def main():
         else:
             registry.update_node_audit(reg_data, name, data_to_save)
         
-        logger.info(f"Successfully processed data for node: {name}")
+        logger.info(f"Successfully processed telemetry for node: {name}")
 
-    # Report Drift
+    # Report Drift & Export Artifact
     drift = dict_diff(prev_reg, reg_data)
-    if drift:
-        for d in drift: logger.warning(d)
-    else:
-        logger.info("No configuration drift detected.")
+    
+    drift_file = PROJECT_ROOT / "docs" / "audit_output" / "latest_drift_report.txt"
+    drift_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(drift_file, "w") as df:
+        if drift:
+            df.write(f"=== CONFIGURATION DRIFT DETECTED: {datetime.utcnow().isoformat()}Z ===\n")
+            for d in drift: 
+                logger.warning(d)
+                df.write(f"{d}\n")
+        else:
+            msg = "No configuration drift detected."
+            logger.info(msg)
+            df.write(f"{msg}\n")
+            
+    logger.info(f"Drift artifact saved to: {drift_file}")
     
     registry.save(reg_data)
-    print("=== REGISTRY MERGE COMPLETE ===")
+    logger.info("=== REGISTRY MERGE COMPLETE ===")
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,4 +1,4 @@
-# Path: /mnt/sharedroot/projects/llm-userprofile/AUDIT/src/modules/ssh_audit.py
+# Path: src/modules/ssh_audit.py
 
 import asyncssh
 import logging
@@ -7,6 +7,8 @@ from models.infrastructure import (
     InfrastructureAudit, OpenWrtAudit, SystemHeuristics,
     DockerStatus, StorageUsage, ZramStatus
 )
+
+logger = logging.getLogger(__name__)
 
 class InfrastructureAuditor:
     def __init__(self, host: str, user: str, password: str):
@@ -121,5 +123,5 @@ class InfrastructureAuditor:
                 return InfrastructureAudit(**common_args)
                 
         except Exception as e:
-            logging.error(f"SSH Audit failed on {self.host}: {e}")
-            raise e
+            logger.error(f"SSH Audit failed on {self.host}: {e}")
+            raise
