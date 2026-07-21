@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from datetime import datetime
 from config import load_environment, get_hosts_from_env, PROJECT_ROOT
 from modules.github_api import GitHubAuditor
 from modules.cloudflare_api import CloudflareAuditor
@@ -57,9 +58,9 @@ async def run_audit_task(host):
     """Execution wrapper for individual infrastructure nodes."""
     try:
         if host['name'] == "github":
-            auditor = GitHubAuditor(host['address'], host['password'])
+            auditor = GitHubAuditor(host['user'], host['password'])
             result = await auditor.audit()
-            return (host['name'], host['address'], result)
+            return (host['name'], host['user'], result)
         elif host['name'] == "cloudflare":
             auditor = CloudflareAuditor(host['user'], host['password'], host['audit_scope'], "")
             result = await auditor.audit()
@@ -85,11 +86,21 @@ async def main():
 
     for result in results:
         if isinstance(result, Exception): continue
+
         name, identifier, audit_result = result
-        if isinstance(audit_result, Exception): continue
         
-        # Serialize model output
-        data_to_save = audit_result.model_dump() if hasattr(audit_result, 'model_dump') else audit_result
+        # Handle unreachable infrastructure
+        if isinstance(audit_result, Exception):
+            data_to_save = {
+                "name": name,
+                "status": "offline",
+                "error_message": str(audit_result),
+                "collected_at": datetime.utcnow().isoformat() + "Z"
+            }
+            logger.warning(f"Node '{name}' is unreachable. Registering offline state.")
+        else:
+            # Serialize model output
+            data_to_save = audit_result.model_dump() if hasattr(audit_result, 'model_dump') else audit_result
         
         if name == "github":
             registry.update_github_ecosystem(reg_data, identifier, data_to_save)
@@ -98,7 +109,7 @@ async def main():
         else:
             registry.update_node_audit(reg_data, name, data_to_save)
         
-        logger.info(f"Successfully merged data for node: {name}")
+        logger.info(f"Successfully processed data for node: {name}")
 
     # Report Drift
     drift = dict_diff(prev_reg, reg_data)

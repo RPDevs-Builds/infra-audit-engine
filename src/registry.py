@@ -1,4 +1,4 @@
-# Path: /mnt/sharedroot/projects/llm-userprofile/AUDIT/src/registry.py
+# Path: /mnt/sharedroot/projects/infra-audit-engine/src/registry.py
 
 import os
 import shutil
@@ -26,7 +26,7 @@ class RegistryManager:
     def normalize_keys(self, data: Dict[str, Any]):
         if "environment_registry" in data:
             ecosystem = data["environment_registry"].get("github_ecosystem", {})
-            keys_to_del = [k for k in ecosystem.keys() if k != k.lower()]
+            keys_to_del = [k for k in ecosystem.keys() if k != k.lower() or "_" in k]
             for k in keys_to_del:
                 del ecosystem[k]
 

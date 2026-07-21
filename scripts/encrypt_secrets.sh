@@ -1,5 +1,9 @@
 #!/bin/bash
-# Path: /mnt/sharedroot/projects/llm-userprofile/scripts/encrypt_secrets.sh
+# Path: scripts/encrypt_secrets.sh
+
+# Dynamically resolve project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 export PATH="$PATH:$HOME/go/bin:$HOME/.local/bin"
 AGE_BIN=$(command -v age || echo "/usr/bin/age")
@@ -7,8 +11,8 @@ AGE_BIN=$(command -v age || echo "/usr/bin/age")
 FIDO2_IDENTITY="${AGE_FIDO2_IDENTITY:-$HOME/.config/chezmoi/age-identity.txt}"
 RECOVERY_RECIPIENT="${AGE_RECOVERY_RECIPIENT}"
 
-# Sets default target to the main .env, overriding previous unified_secrets.env behavior
-TARGET_FILE="${1:-/mnt/sharedroot/projects/llm-userprofile/.env}"
+# Set default target to the main .env dynamically located in the project root
+TARGET_FILE="${1:-$PROJECT_ROOT/.env}"
 ENCRYPTED_FILE="${TARGET_FILE}.age"
 
 if [ ! -f "$TARGET_FILE" ]; then

@@ -2,8 +2,8 @@
 
 import os
 import subprocess
-import tempfile
 import sys
+import io
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -25,36 +25,24 @@ FIDO2_IDENTITY = os.getenv("AGE_FIDO2_IDENTITY", str(Path.home() / ".config" / "
 def load_environment() -> None:
     """
     Evaluates the presence of Age-encrypted environment variables.
-    If found, enforces FIDO2 decryption to a RAM disk, loads secrets into memory, 
-    and aggressively shreds the temporary file.
+    If found, enforces FIDO2 decryption directly into memory via stdout,
+    eliminating virtual file system writes and race conditions.
     """
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     if ENV_AGE.exists():
         print("=== DECRYPTING ENVIRONMENT SECRETS ===")
-        secure_mem = Path("/dev/shm") if Path("/dev/shm").is_dir() else Path("/tmp")
-        fd, temp_path = tempfile.mkstemp(dir=secure_mem, prefix="env_")
-        os.close(fd)
-        temp_file = Path(temp_path)
-
         try:
             result = subprocess.run(
-                ["age", "-d", "-i", FIDO2_IDENTITY, "-o", str(temp_file), str(ENV_AGE)],
+                ["age", "-d", "-i", FIDO2_IDENTITY, str(ENV_AGE)],
                 capture_output=True,
-                text=True
+                text=True,
+                check=True
             )
-
-            if result.returncode == 0:
-                load_dotenv(dotenv_path=temp_file)
-            else:
-                print(f"Error: Decryption failed or FIDO2 touch timed out.\n{result.stderr}")
-                raise RuntimeError("FIDO2 Hardware Decryption Failed")
-                
-        finally:
-            if temp_file.exists():
-                subprocess.run(["shred", "-u", str(temp_file)], check=False)
-                if temp_file.exists():
-                    temp_file.unlink()
+            load_dotenv(stream=io.StringIO(result.stdout))
+        except subprocess.CalledProcessError as e:
+            print(f"Error: Decryption failed or FIDO2 touch timed out.\n{e.stderr}")
+            raise RuntimeError("FIDO2 Hardware Decryption Failed")
 
     elif ENV_FILE.exists():
         print("WARNING: Using cleartext .env file. Consider encrypting via encrypt_secrets.sh.")

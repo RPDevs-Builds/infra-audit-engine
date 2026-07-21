@@ -1,12 +1,12 @@
-# Makefile for LLM-UserProfile Infrastructure Audit
-# Path: /mnt/sharedroot/projects/llm-userprofile/AUDIT/Makefile
+# Makefile for Infrastructure Audit Engine
+# Path: Makefile
 
 VENV = .venv
 PYTHON = $(VENV)/bin/python
 PIP = $(VENV)/bin/pip
 DIST = dist/orchestrator
 
-.PHONY: help init build run clean distclean enroll
+.PHONY: help init build run clean distclean enroll encrypt
 
 help: ## Show this help message
 	@echo "Usage: make [target]"
@@ -23,7 +23,6 @@ build: init ## Compile the project into a standalone executable using PyInstalle
 	$(VENV)/bin/pyinstaller --onefile \
 		--name orchestrator \
 		--add-data "docs:docs" \
-		--add-data ".env:." \
 		src/orchestrator.py
 
 run: ## Execute the compiled binary
@@ -31,6 +30,9 @@ run: ## Execute the compiled binary
 
 enroll: init ## Interactive helper to enroll a new audit target into .env
 	$(PYTHON) src/enroll.py
+
+encrypt: ## Encrypt the .env file using FIDO2 hardware key
+	bash scripts/encrypt_secrets.sh
 
 clean: ## Remove build and distribution artifacts
 	rm -rf dist build *.spec
