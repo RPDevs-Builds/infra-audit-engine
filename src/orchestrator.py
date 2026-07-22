@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from config import load_environment, get_hosts_from_env, PROJECT_ROOT
 from logger import setup_system_logger
 
@@ -14,46 +14,7 @@ from modules.cloudflare_api import CloudflareAuditor
 from modules.ssh_audit import InfrastructureAuditor
 from registry import RegistryManager
 
-def dict_diff(old, new, path=""):
-    """Recursively compares dicts, formatting large outputs to prevent terminal noise."""
-    ignore_keys = {'collected_at', 'load_average', 'memory_active', 'ssh_keys_verified'}
-    diffs = []
-    if not old: return diffs
-    
-    reg_old = old.get("environment_registry", {})
-    reg_new = new.get("environment_registry", {})
-    
-    def format_val(v):
-        """Summarizes large structures and truncates strings for clean logging."""
-        if isinstance(v, dict):
-            return f"[Dictionary: {len(v)} keys]"
-        elif isinstance(v, list):
-            return f"[List: {len(v)} items]"
-        
-        v_str = str(v)
-        return v_str if len(v_str) < 60 else v_str[:57] + "..."
-    
-    def recursive_compare(o_data, n_data, current_path):
-        keys = set(list(o_data.keys()) + list(n_data.keys()))
-        for k in keys:
-            if k in ignore_keys: continue
-            
-            p = f"{current_path}.{k}" if current_path else k
-            o_val = o_data.get(k)
-            n_val = n_data.get(k)
-            
-            if k not in o_data:
-                diffs.append(f"ADDED: {p} | VALUE: {format_val(n_val)}")
-            elif k not in n_data:
-                diffs.append(f"REMOVED: {p} | OLD VALUE: {format_val(o_val)}")
-            elif o_val != n_val:
-                if isinstance(o_val, dict) and isinstance(n_val, dict):
-                    recursive_compare(o_val, n_val, p)
-                else:
-                    diffs.append(f"CHANGED: {p} | OLD: {format_val(o_val)} | NEW: {format_val(n_val)}")
-
-    recursive_compare(reg_old, reg_new, "")
-    return diffs
+from diff_audit import dict_diff
 
 async def run_audit_task(host):
     """Execution wrapper for individual infrastructure nodes."""
@@ -99,7 +60,7 @@ async def main():
                 "name": name,
                 "status": "offline",
                 "error_message": str(audit_result),
-                "collected_at": datetime.utcnow().isoformat() + "Z"
+                "collected_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             }
             logger.warning(f"Node '{name}' is unreachable. Registering offline state.")
         else:
@@ -123,7 +84,7 @@ async def main():
     
     with open(drift_file, "w") as df:
         if drift:
-            df.write(f"=== CONFIGURATION DRIFT DETECTED: {datetime.utcnow().isoformat()}Z ===\n")
+            df.write(f"=== CONFIGURATION DRIFT DETECTED: {datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')} ===\n")
             for d in drift: 
                 logger.warning(d)
                 df.write(f"{d}\n")

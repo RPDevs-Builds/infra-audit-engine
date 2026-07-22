@@ -3,7 +3,7 @@
 import httpx
 import logging
 from models.github import GithubAudit
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ class GitHubAuditor:
 
                 data = {
                     "name": self.org,
-                    "collected_at": datetime.utcnow().isoformat() + "Z",
+                    "collected_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                     "billing_telemetry": {"actions_minutes_used": "unavailable", "storage_days_used": "unavailable"},
                     "repository_metrics": metrics,
                     "archived_repositories": archived

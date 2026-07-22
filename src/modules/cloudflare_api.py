@@ -1,10 +1,10 @@
-# Path: /mnt/sharedroot/projects/llm-userprofile/AUDIT/src/modules/cloudflare_api.py
+# Path: src/modules/cloudflare_api.py
 
 import asyncio
 import httpx
 import logging
 from models.cloudflare import CloudflareAudit
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class CloudflareAuditor:
                 workers = [{"id": w.get("id"), "created_on": w.get("created_on")} for w in raw_workers]
 
                 data = {
-                    "collected_at": datetime.utcnow().isoformat() + "Z",
+                    "collected_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                     "zones": [{"name": z["name"], "status": z["status"], "dns_record_count": len(dns_records.get(z["name"], []))} for z in zones],
                     "dns_records": dns_records,
                     "tunnels": tunnels,

@@ -2,7 +2,7 @@
 
 import asyncssh
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from models.infrastructure import (
     InfrastructureAudit, OpenWrtAudit, SystemHeuristics,
     DockerStatus, StorageUsage, ZramStatus
@@ -18,7 +18,7 @@ class InfrastructureAuditor:
 
     def _parse_uci_show(self, uci_stdout: str) -> dict:
         uci_data = {}
-        sensitive_keys = {'key', 'password', 'passphrase', 'secret'}
+        sensitive_keys = {'key', 'password', 'passphrase', 'secret', 'token'}
 
         for line in uci_stdout.splitlines():
             line = line.strip()
@@ -94,7 +94,7 @@ class InfrastructureAuditor:
                 # 4. Construct the Core Model Payload
                 common_args = {
                     "name": node_name,
-                    "collected_at": datetime.utcnow().isoformat() + "Z",
+                    "collected_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                     "system_heuristics": SystemHeuristics(
                         load_average=load.stdout.strip() if load.stdout else "unknown",
                         memory_active=mem.stdout.strip() if mem.stdout else "unknown",
